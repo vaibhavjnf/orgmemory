@@ -400,3 +400,232 @@ export function listSealDevices(db: DatabaseSync, orgId: string): SealDevice[] {
   >[];
   return rows.map(rowToDevice);
 }
+
+function rowToDevice(r: Record<string, unknown>): SealDevice {
+  return {
+    id: String(r.id),
+    orgId: String(r.org_id),
+    hostname: String(r.hostname),
+    os: r.os as SealDevice["os"],
+    osUser: String(r.os_user),
+    ownerUserId: String(r.owner_user_id),
+    integrityTier: r.integrity_tier as SealDevice["integrityTier"],
+    claimedTier: r.claimed_tier as SealDevice["claimedTier"],
+    degradeReason: r.degrade_reason ? String(r.degrade_reason) : null,
+    allowlist: JSON.parse(String(r.allowlist_json)) as string[],
+    capabilities: JSON.parse(String(r.capabilities_json)) as SealDevice["capabilities"],
+    lastHeartbeatAt: r.last_heartbeat_at ? String(r.last_heartbeat_at) : null,
+    enrolledAt: String(r.enrolled_at),
+  };
+}
+
+export function insertSealEvents(db: DatabaseSync, orgId: string, events: SealEvent[]): void {
+  const ins = db.prepare(
+    `INSERT OR REPLACE INTO seal_events (
+      id, org_id, device_id, kind, path, dest_path, content_hash, mtime, os_user,
+      integrity_tier, placeholder, allowlisted, occurred_at
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+  );
+  for (const e of events) {
+    ins.run(
+      e.id,
+      orgId,
+      e.deviceId,
+      e.kind,
+      e.path,
+      e.destPath,
+      e.contentHash,
+      e.mtime,
+      e.osUser,
+      e.integrityTier,
+      e.placeholder,
+      e.allowlisted ? 1 : 0,
+      e.occurredAt,
+    );
+  }
+}
+
+export function touchSealHeartbeat(db: DatabaseSync, deviceId: string, at: string): void {
+  db.prepare("UPDATE seal_devices SET last_heartbeat_at = ? WHERE id = ?").run(at, deviceId);
+}
+
+export function upsertHarnessActor(db: DatabaseSync, actor: Actor): void {
+  db.prepare(
+    `INSERT INTO harness_actors (id, org_id, display_name, department, team, role)
+     VALUES (?,?,?,?,?,?)
+     ON CONFLICT(id) DO UPDATE SET
+       display_name=excluded.display_name,
+       department=excluded.department,
+       team=excluded.team,
+       role=excluded.role`,
+  ).run(actor.id, actor.orgId, actor.displayName, actor.department, actor.team, actor.role);
+}
+
+export function upsertWorkCluster(db: DatabaseSync, cluster: WorkCluster, opts?: { allowFrozen?: boolean }): void {
+  const existing = getWorkCluster(db, cluster.id);
+  if (existing?.frozenCommitId && !opts?.allowFrozen) {
+    const stageChanged = existing.stage !== cluster.stage;
+    const titleChanged = existing.title !== cluster.title;
+    if (stageChanged || titleChanged) {
+      throw new Error(
+        `Cluster ${cluster.id} is frozen by hard commit ${existing.frozenCommitId}. Soft edits cannot clobber it.`,
+      );
+    }
+  }
+  db.prepare(
+    `INSERT INTO work_clusters (
+      id, org_id, department, team, title, stage, owner_actor_id, actor_ids_json,
+      node_ids_json, frozen_commit_id, updated_at
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(id) DO UPDATE SET
+      department=excluded.department,
+      team=excluded.team,
+      title=excluded.title,
+      stage=excluded.stage,
+      owner_actor_id=excluded.owner_actor_id,
+      actor_ids_json=excluded.actor_ids_json,
+      node_ids_json=excluded.node_ids_json,
+      frozen_commit_id=excluded.frozen_commit_id,
+      updated_at=excluded.updated_at`,
+  ).run(
+    cluster.id,
+    cluster.orgId,
+    cluster.department,
+    cluster.team,
+    cluster.title,
+    cluster.stage,
+    cluster.ownerActorId,
+    JSON.stringify(cluster.actorIds),
+    JSON.stringify(cluster.nodeIds),
+    cluster.frozenCommitId,
+    cluster.updatedAt,
+  );
+}
+
+export function touchWorkCluster(db: DatabaseSync, clusterId: string, at: string): void {
+  db.prepare("UPDATE work_clusters SET updated_at = ? WHERE id = ?").run(at, clusterId);
+}
+
+export function upsertArtifact(db: DatabaseSync, artifact: Artifact): Artifact {
+  const existing = db
+    .prepare("SELECT * FROM artifacts WHERE org_id = ? AND ref = ?")
+    .get(artifact.orgId, artifact.ref) as Record<string, unknown> | undefined;
+  if (existing) {
+    if (artifact.clusterId && !existing.cluster_id) {
+      db.prepare("UPDATE artifacts SET cluster_id = ? WHERE id = ?").run(artifact.clusterId, String(existing.id));
+      existing.cluster_id = artifact.clusterId;
+    }
+    return rowToArtifact(existing);
+  }
+  db.prepare(
+    `INSERT INTO artifacts (id, org_id, cluster_id, kind, title, source, ref, created_at)
+     VALUES (?,?,?,?,?,?,?,?)`,
+  ).run(
+    artifact.id,
+    artifact.orgId,
+    artifact.clusterId,
+    artifact.kind,
+    artifact.title,
+    artifact.source,
+    artifact.ref,
+    artifact.createdAt,
+  );
+  return artifact;
+}
+
+export function insertWorkEvent(db: DatabaseSync, event: WorkEvent): void {
+  db.prepare(
+    `INSERT OR REPLACE INTO work_events (
+      id, org_id, cluster_id, actor_id, node_id, source, verb, summary, artifact_id, occurred_at
+    ) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+  ).run(
+    event.id,
+    event.orgId,
+    event.clusterId,
+    event.actorId,
+    event.nodeId,
+    event.source,
+    event.verb,
+    event.summary,
+    event.artifactId,
+    event.occurredAt,
+  );
+  if (event.clusterId) touchWorkCluster(db, event.clusterId, event.occurredAt);
+}
+
+export function insertHarnessReceipt(db: DatabaseSync, receipt: Receipt): void {
+  db.prepare(
+    `INSERT OR REPLACE INTO harness_receipts (
+      id, org_id, cluster_id, artifact_id, actor_id, purpose, issued_at
+    ) VALUES (?,?,?,?,?,?,?)`,
+  ).run(
+    receipt.id,
+    receipt.orgId,
+    receipt.clusterId,
+    receipt.artifactId,
+    receipt.actorId,
+    receipt.purpose,
+    receipt.issuedAt,
+  );
+}
+
+export function listHarnessActors(db: DatabaseSync, orgId: string): Actor[] {
+  const rows = db.prepare("SELECT * FROM harness_actors WHERE org_id = ? ORDER BY department, team").all(orgId) as Record<
+    string,
+    unknown
+  >[];
+  return rows.map(rowToHarnessActor);
+}
+
+export function listWorkClusters(db: DatabaseSync, orgId: string): WorkCluster[] {
+  const rows = db
+    .prepare("SELECT * FROM work_clusters WHERE org_id = ? ORDER BY department, team, title")
+    .all(orgId) as Record<string, unknown>[];
+  return rows.map(rowToCluster);
+}
+
+export function getWorkCluster(db: DatabaseSync, id: string): WorkCluster | undefined {
+  const row = db.prepare("SELECT * FROM work_clusters WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  return row ? rowToCluster(row) : undefined;
+}
+
+export function listArtifacts(db: DatabaseSync, orgId: string, clusterId?: string): Artifact[] {
+  const rows = (
+    clusterId
+      ? db.prepare("SELECT * FROM artifacts WHERE org_id = ? AND cluster_id = ? ORDER BY created_at DESC").all(orgId, clusterId)
+      : db.prepare("SELECT * FROM artifacts WHERE org_id = ? ORDER BY created_at DESC").all(orgId)
+  ) as Record<string, unknown>[];
+  return rows.map(rowToArtifact);
+}
+
+export function listWorkEvents(db: DatabaseSync, orgId: string, opts?: { clusterId?: string; limit?: number }): WorkEvent[] {
+  const limit = opts?.limit ?? 80;
+  const rows = (
+    opts?.clusterId
+      ? db
+          .prepare(
+            "SELECT * FROM work_events WHERE org_id = ? AND cluster_id = ? ORDER BY occurred_at DESC LIMIT ?",
+          )
+          .all(orgId, opts.clusterId, limit)
+      : db.prepare("SELECT * FROM work_events WHERE org_id = ? ORDER BY occurred_at DESC LIMIT ?").all(orgId, limit)
+  ) as Record<string, unknown>[];
+  return rows.map(rowToWorkEvent);
+}
+
+export function listHarnessReceipts(db: DatabaseSync, orgId: string, clusterId?: string): Receipt[] {
+  const rows = (
+    clusterId
+      ? db
+          .prepare("SELECT * FROM harness_receipts WHERE org_id = ? AND cluster_id = ? ORDER BY issued_at DESC")
+          .all(orgId, clusterId)
+      : db.prepare("SELECT * FROM harness_receipts WHERE org_id = ? ORDER BY issued_at DESC").all(orgId)
+  ) as Record<string, unknown>[];
+  return rows.map(rowToHarnessReceipt);
+}
+
+export function countWorkEventsBySource(db: DatabaseSync, orgId: string): Array<{ source: ActivitySource; n: number }> {
+  const rows = db
+    .prepare("SELECT source, COUNT(*) AS n FROM work_events WHERE org_id = ? GROUP BY source")
+    .all(orgId) as Array<{ source: string; n: number }>;
+  return rows.map((r) => ({ source: r.source as ActivitySource, n: Number(r.n) }));
+}
