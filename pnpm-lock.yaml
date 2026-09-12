@@ -1,1 +1,5 @@
-USE_FILE:/workspace/pnpm-lock.yaml
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
