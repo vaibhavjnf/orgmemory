@@ -1,0 +1,235 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .: {}
+
+  apps/api:
+    dependencies:
+      '@fastify/cors':
+        specifier: ^11.1.0
+        version: 11.3.0
+      '@orgmemory/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@orgmemory/harness':
+        specifier: workspace:*
+        version: link:../../packages/harness
+      '@orgmemory/harness-runtime':
+        specifier: workspace:*
+        version: link:../../packages/harness-runtime
+      '@orgmemory/license':
+        specifier: workspace:*
+        version: link:../../packages/license
+      '@orgmemory/policy':
+        specifier: workspace:*
+        version: link:../../packages/policy
+      '@orgmemory/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      '@orgmemory/seal-protocol':
+        specifier: workspace:*
+        version: link:../../packages/seal-protocol
+      fastify:
+        specifier: ^5.6.1
+        version: 5.12.4
+      zod:
+        specifier: ^4.1.11
+        version: 4.6.2
+    devDependencies:
+      '@types/node':
+        specifier: ^24.5.2
+        version: 24.13.4
+      tsx:
+        specifier: ^4.20.5
+        version: 4.23.13
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@24.13.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)
+
+  apps/dashboard:
+    dependencies:
+      react:
+        specifier: ^19.1.1
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.1
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.13
+        version: 4.3.3(vite@7.3.6(@types/node@24.13.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13))
+      '@types/react':
+        specifier: ^19.1.13
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.9
+        version: 19.3.0(@types/react@19.3.0)
+      '@vitejs/plugin-react':
+        specifier: ^5.0.2
+        version: 5.2.0(vite@7.3.6(@types/node@24.13.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13))
+      tailwindcss:
+        specifier: ^4.1.13
+        version: 4.3.3
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vite:
+        specifier: ^7.1.5
+        version: 7.3.6(@types/node@24.13.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)
+
+  apps/demo-story: {}
+
+  apps/license:
+    dependencies:
+      '@fastify/cors':
+        specifier: ^11.1.0
+        version: 11.3.0
+      '@orgmemory/license':
+        specifier: workspace:*
+        version: link:../../packages/license
+      fastify:
+        specifier: ^5.6.1
+        version: 5.12.4
+      zod:
+        specifier: ^4.1.11
+        version: 4.6.2
+    devDependencies:
+      '@types/node':
+        specifier: ^24.5.2
+        version: 24.13.4
+      tsx:
+        specifier: ^4.20.5
+        version: 4.23.13
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  apps/seal-agent:
+    dependencies:
+      '@orgmemory/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      '@orgmemory/seal-protocol':
+        specifier: workspace:*
+        version: link:../../packages/seal-protocol
+    devDependencies:
+      '@types/node':
+        specifier: ^24.5.2
+        version: 24.13.4
+      tsx:
+        specifier: ^4.20.5
+        version: 4.23.13
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  apps/worker:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.5.2
+        version: 24.13.4
+      tsx:
+        specifier: ^4.20.5
+        version: 4.23.13
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/core:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.5.2
+        version: 24.13.4
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@24.13.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)
+
+  packages/harness:
+    dependencies:
+      '@orgmemory/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@24.13.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)
+
+  packages/harness-runtime:
+    dependencies:
+      '@orgmemory/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@24.13.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)
+
+  packages/license:
+    dependencies:
+      '@orgmemory/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^24.5.2
+        version: 24.13.4
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@24.13.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)
+
+  packages/policy:
+    dependencies:
+      '@orgmemory/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@24.13.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)
+
+  packages/sdk:
+    dependencies:
+      '@orgmemory/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^24.5.2
+        version: 24.13.4
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/seal-protocol:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@24.13.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)
+
+packages: {}
