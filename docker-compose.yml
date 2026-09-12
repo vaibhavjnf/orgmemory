@@ -1,0 +1,17 @@
+# Optional Postgres for later. The default local path is SQLite via `pnpm dev`.
+# This compose file is unused by the MVP seed path.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: orgmemory
+      POSTGRES_PASSWORD: orgmemory
+      POSTGRES_DB: orgmemory
+    ports:
+      - "54329:5432"
+    volumes:
+      - orgmemory_pg:/var/lib/postgresql/data
+
+volumes:
+  orgmemory_pg:
