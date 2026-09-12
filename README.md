@@ -32,7 +32,7 @@ pnpm demo:story    # local copy of the static demo on :43124
 
 Demo keys (not secrets): `om_demo_acme_legal` (Night Agent), `om_demo_jordan`, `om_demo_priya`, `om_demo_sam`.
 
-Scenarios: [USE_CASES.md](./USE_CASES.md). Deeper design: [docs/HARNESS.md](./docs/HARNESS.md), [docs/HERMES_RUNTIME.md](./docs/HERMES_RUNTIME.md), [docs/okfp.md](./docs/okfp.md).
+Scenarios: [USE_CASES.md](./USE_CASES.md). Deeper design: [docs/HARNESS.md](./docs/HARNESS.md), [docs/CONCURRENT_FABRIC.md](./docs/CONCURRENT_FABRIC.md), [docs/HERMES_RUNTIME.md](./docs/HERMES_RUNTIME.md), [docs/SEAL_ENDPOINTS.md](./docs/SEAL_ENDPOINTS.md), [docs/okfp.md](./docs/okfp.md).
 
 ## Live vs stub
 
@@ -88,14 +88,18 @@ Overlay only (Drive stays canonical). Employee-visible audits. No keylogging. AC
 ## Repo map
 
 ```
-apps/api           Fastify + SQLite harness (authority)
-apps/dashboard     Vite UI — projection of the loop
-apps/worker        Hosted Hermes ticker
-apps/demo-story    Static public demo
-apps/seal-agent    Win/Mac/Linux scaffolds
-packages/core      Types, Midnight ranker, OKFP
-packages/harness-runtime  Tenant loop
-packages/sdk       Agent client
+apps/api              Fastify + SQLite harness (authority)
+apps/dashboard        Vite UI — Owner Concurrent Dashboard
+apps/worker           Hosted Hermes ticker
+apps/demo-story       Static public demo
+apps/seal-agent       Win/Mac/Linux watcher scaffolds
+packages/core         Types, Midnight ranker, OKFP, fabric
+packages/harness      WorkEvent bus + cluster assignment
+packages/harness-runtime  Tenant loop (deterministic, no LLM)
+packages/seal-protocol    T0–T3 ingest + integrity
+packages/policy       Fetch / after-hours rules
+packages/license      Feature flags
+packages/sdk          Agent client
 ```
 
 ## License
