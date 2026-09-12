@@ -1,38 +1,103 @@
-# OrgMemory (hobby)
+# OrgMemory
 
-Hermes-class org memory harness — concurrent owner dashboard, Midnight Suggest, OKFP fetch receipts, Seal endpoints (Win/Mac/Linux), timeline mirrors.
+Personal open build: an **organizational agent harness**. Official memory for agentic teams.
 
-**Demo:** https://orgmemory-demo.vercel.app  
-**Waitlist:** https://orgmemory-waitlist.vercel.app  
+I work on this in public as a hobby. The dashboard is a projection of harness state — not a chatbot skin over Drive.
+
+Demo (static walk of the Owner path): https://orgmemory-demo.vercel.app  
+Waitlist (optional): https://orgmemory-waitlist.vercel.app
+
+## Run locally
 
 ```bash
-pnpm install && pnpm dev
+pnpm install
+pnpm dev
 ```
 
-Hobby project — not fundraising. Full tree landing via cloud agent next.
+| Surface | URL |
+| --- | --- |
+| Dashboard | http://127.0.0.1:43122 |
+| API | http://127.0.0.1:43121 |
+| Health | http://127.0.0.1:43121/v1/health |
 
-## Use cases
+Needs Node 20+. SQLite at `data/orgmemory.sqlite` is created and seeded with **Acme Legal** on first boot. No extra env required.
 
-## 1. Midnight lease draft
-Associate drafts a rent amendment at 00:30. Authors are offline. OrgMemory **Suggest** ranks prior Exhibit B / rent schedules from Drive/OneDrive without pinging anyone. **Fetch** with a purpose string → OKFP receipt for the matter file.
+```bash
+pnpm test
+pnpm seed          # reset the demo org
+pnpm demo          # suggest → fetch → verify (API must be up)
+pnpm worker        # one hosted Hermes tick
+pnpm demo:story    # local copy of the static demo on :43124
+```
 
-## 2. Owner concurrent board
-Founder opens the dashboard and sees Finance vs Real Estate vs Partners: what each cluster is, stage (intake / active / blocked), and recent Slack / Salesforce / Ramp / Seal pulses — brainstorm on the hottest concurrent cluster.
+Demo keys (not secrets): `om_demo_acme_legal` (Night Agent), `om_demo_jordan`, `om_demo_priya`, `om_demo_sam`.
 
-## 3. Official knowledge fetch (compliance toy)
-Any agent or human retrieval is purpose-bound and hashed. Legal/ops can export “who fetched what, why” — the hobby version of an audit log enterprises pay for.
+Scenarios: [USE_CASES.md](./USE_CASES.md). Deeper design: [docs/HARNESS.md](./docs/HARNESS.md), [docs/HERMES_RUNTIME.md](./docs/HERMES_RUNTIME.md), [docs/okfp.md](./docs/okfp.md).
 
-## 4. Laptop Seal (Win / Mac / Linux)
-Enroll a folder on a work laptop. File create/modify events stream in at integrity tier T0–T3 (degrade if admin rights missing). Shadow-IT folders become visible without keylogging.
+## Live vs stub
 
-## 5. Hosted Hermes loop
-A tenant worker tick: suggest → fetch → prompt_trace → remember on a cluster (e.g. HQ rent). Same harness drives the UI — not a bolted-on chatbot.
+| Surface | Status |
+| --- | --- |
+| Owner Concurrent Dashboard + WorkEvent bus | **Live** (seeded) |
+| Suggest + Midnight ranking | **Live** |
+| OKFP fetch + verify | **Live** |
+| Seal ledger + Win/Mac/Linux ingest (T0–T3) | **Live protocol**; native watchers are **scaffolds** |
+| Atlas skill graph | **Live** seed graph |
+| Hosted Hermes loop | **Live**, deterministic (no LLM) |
+| Mirrors + signed rollback + hard commits | **Live** |
+| Session vault metadata | **Live** (redacted; no raw cookies) |
+| Composio tenant identity | **Stub** (interface + mock) |
+| Slack / Salesforce / Ramp / browser jobs | **Stubs** on the same bus |
+| OpenClaw / Ego / picoclaw / cookie brokers | **Not shipped** |
+| Public hosted API | **Not shipped** — live harness is local `pnpm dev` |
 
-## 6. Mirror + emergency rollback
-Snapshot the concurrent board (“Pre-commit HQ rent”). After a bad edit path, rollback to that mirror and keep a rollback receipt.
+## What it is
 
-## 7. Prompt insight (manager lens)
-Aggregated reuse / blocked / spend chips from prompt traces — hobby Atlas for “where is the team stuck?” without raw dump-by-default.
+OrgMemory **holds** the org’s work graph (`Actor`, `Artifact`, `WorkEvent`, `WorkCluster`, `Receipt`), **adapts** per tenant, and **drives** the UI. Slack, Salesforce, Ramp, Drive, OneDrive, Dropbox, and Seal normalize onto one bus. Agents call the same suggest/fetch/OKFP plane.
 
-## 8. Design-partner story
-14-day pilot narrative: one matter, one shared drive, success = useful midnight suggest + 100% fetch receipts + owner can see the board.
+```ts
+import { OrgMemoryClient } from "@orgmemory/sdk";
+
+const om = new OrgMemoryClient({
+  baseUrl: "http://127.0.0.1:43121",
+  apiKey: "om_demo_acme_legal",
+  actorId: "user_agent",
+});
+
+const { suggestions } = await om.suggest({
+  query: "lease rent schedule",
+  context: "HQ rent amendment, need executed Exhibit B",
+  projectId: "proj_re",
+});
+
+const hit = suggestions[0]!;
+const { receipt } = await om.fetch({
+  fileId: hit.fileId,
+  suggestionId: hit.id,
+  purpose: "Draft HQ rent amendment at 00:30 without pinging a human",
+  matterId: "matter_hq",
+});
+
+await om.verifyReceipt(receipt);
+```
+
+## Trust
+
+Overlay only (Drive stays canonical). Employee-visible audits. No keylogging. ACL inheritance. Purpose binding — no purpose, no bytes.
+
+## Repo map
+
+```
+apps/api           Fastify + SQLite harness (authority)
+apps/dashboard     Vite UI — projection of the loop
+apps/worker        Hosted Hermes ticker
+apps/demo-story    Static public demo
+apps/seal-agent    Win/Mac/Linux scaffolds
+packages/core      Types, Midnight ranker, OKFP
+packages/harness-runtime  Tenant loop
+packages/sdk       Agent client
+```
+
+## License
+
+[MIT](./LICENSE) © 2026 Vaibhav Sharma
