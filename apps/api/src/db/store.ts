@@ -623,4 +623,224 @@ export function listHarnessReceipts(db: DatabaseSync, orgId: string, clusterId?:
   return rows.map(rowToHarnessReceipt);
 }
 
-export function countWorkEventsBySource(db: DatabaseSync, orgId: 
+export function countWorkEventsBySource(db: DatabaseSync, orgId: string): Array<{ source: ActivitySource; n: number }> {
+  const rows = db
+    .prepare("SELECT source, COUNT(*) AS n FROM work_events WHERE org_id = ? GROUP BY source")
+    .all(orgId) as Array<{ source: string; n: number }>;
+  return rows.map((r) => ({ source: r.source as ActivitySource, n: Number(r.n) }));
+}
+
+export interface ClusterCard extends WorkCluster {
+  artifactCount: number;
+  recentEvents: WorkEvent[];
+  nodes: WorkNode[];
+}
+
+export interface DepartmentLane {
+  department: string;
+  teams: Array<{ team: string; clusters: ClusterCard[] }>;
+}
+
+export interface OwnerBoard {
+  identity: "harness";
+  bus: string;
+  actors: Actor[];
+  nodes: WorkNode[];
+  departments: DepartmentLane[];
+  sources: Array<{ source: ActivitySource; events: number }>;
+  clusterCount: number;
+  eventCount: number;
+}
+
+export function listOwnerBoard(db: DatabaseSync, orgId: string): OwnerBoard {
+  const actors = listHarnessActors(db, orgId);
+  const nodes = listWorkNodes(db, orgId);
+  const nodeById = new Map(nodes.map((n) => [n.id, n]));
+  const clusters = listWorkClusters(db, orgId);
+  const events = listWorkEvents(db, orgId, { limit: 120 });
+  const artifacts = listArtifacts(db, orgId);
+  const sources = countWorkEventsBySource(db, orgId).map((s) => ({ source: s.source, events: s.n }));
+
+  const eventsByCluster = new Map<string, WorkEvent[]>();
+  for (const e of events) {
+    if (!e.clusterId) continue;
+    const list = eventsByCluster.get(e.clusterId) ?? [];
+    list.push(e);
+    eventsByCluster.set(e.clusterId, list);
+  }
+  const artifactCount = new Map<string, number>();
+  for (const a of artifacts) {
+    if (!a.clusterId) continue;
+    artifactCount.set(a.clusterId, (artifactCount.get(a.clusterId) ?? 0) + 1);
+  }
+
+  const deptMap = new Map<string, Map<string, ClusterCard[]>>();
+  for (const c of clusters) {
+    const card: ClusterCard = {
+      ...c,
+      artifactCount: artifactCount.get(c.id) ?? 0,
+      recentEvents: (eventsByCluster.get(c.id) ?? []).slice(0, 3),
+      nodes: c.nodeIds.map((id) => nodeById.get(id)).filter((n): n is WorkNode => Boolean(n)),
+    };
+    const teams = deptMap.get(c.department) ?? new Map<string, ClusterCard[]>();
+    const lane = teams.get(c.team) ?? [];
+    lane.push(card);
+    teams.set(c.team, lane);
+    deptMap.set(c.department, teams);
+  }
+
+  const departments: DepartmentLane[] = [...deptMap.entries()].map(([department, teams]) => ({
+    department,
+    teams: [...teams.entries()].map(([team, clusterCards]) => ({ team, clusters: clusterCards })),
+  }));
+
+  return {
+    identity: "harness",
+    bus: "connector → WorkEvent → harness store → UI",
+    actors,
+    nodes,
+    departments,
+    sources,
+    clusterCount: clusters.length,
+    eventCount: events.length,
+  };
+}
+
+export function getClusterBriefing(
+  db: DatabaseSync,
+  orgId: string,
+  clusterId: string,
+): {
+  cluster: WorkCluster;
+  actors: Actor[];
+  artifacts: Artifact[];
+  events: WorkEvent[];
+  receipts: Receipt[];
+} | undefined {
+  const cluster = getWorkCluster(db, clusterId);
+  if (!cluster || cluster.orgId !== orgId) return undefined;
+  const actors = listHarnessActors(db, orgId).filter(
+    (a) => a.id === cluster.ownerActorId || cluster.actorIds.includes(a.id),
+  );
+  return {
+    cluster,
+    actors,
+    artifacts: listArtifacts(db, orgId, clusterId),
+    events: listWorkEvents(db, orgId, { clusterId, limit: 40 }),
+    receipts: listHarnessReceipts(db, orgId, clusterId),
+  };
+}
+
+function rowToHarnessActor(r: Record<string, unknown>): Actor {
+  return {
+    id: String(r.id),
+    orgId: String(r.org_id),
+    displayName: String(r.display_name),
+    department: String(r.department),
+    team: String(r.team),
+    role: r.role as Actor["role"],
+  };
+}
+
+function rowToCluster(r: Record<string, unknown>): WorkCluster {
+  return {
+    id: String(r.id),
+    orgId: String(r.org_id),
+    department: String(r.department),
+    team: String(r.team),
+    title: String(r.title),
+    stage: r.stage as WorkStage,
+    ownerActorId: String(r.owner_actor_id),
+    actorIds: parseJson<string[]>(String(r.actor_ids_json), []),
+    nodeIds: parseJson<string[]>(String(r.node_ids_json ?? "[]"), []),
+    frozenCommitId: r.frozen_commit_id ? String(r.frozen_commit_id) : null,
+    updatedAt: String(r.updated_at),
+  };
+}
+
+function rowToArtifact(r: Record<string, unknown>): Artifact {
+  return {
+    id: String(r.id),
+    orgId: String(r.org_id),
+    clusterId: r.cluster_id ? String(r.cluster_id) : null,
+    kind: r.kind as Artifact["kind"],
+    title: String(r.title),
+    source: r.source as ActivitySource,
+    ref: String(r.ref),
+    createdAt: String(r.created_at),
+  };
+}
+
+function rowToWorkEvent(r: Record<string, unknown>): WorkEvent {
+  return {
+    id: String(r.id),
+    orgId: String(r.org_id),
+    clusterId: r.cluster_id ? String(r.cluster_id) : null,
+    actorId: String(r.actor_id),
+    nodeId: r.node_id ? String(r.node_id) : null,
+    source: r.source as ActivitySource,
+    verb: String(r.verb),
+    summary: String(r.summary),
+    artifactId: r.artifact_id ? String(r.artifact_id) : null,
+    occurredAt: String(r.occurred_at),
+  };
+}
+
+function rowToHarnessReceipt(r: Record<string, unknown>): Receipt {
+  return {
+    id: String(r.id),
+    orgId: String(r.org_id),
+    clusterId: r.cluster_id ? String(r.cluster_id) : null,
+    artifactId: r.artifact_id ? String(r.artifact_id) : null,
+    actorId: String(r.actor_id),
+    purpose: String(r.purpose),
+    issuedAt: String(r.issued_at),
+  };
+}
+
+export function upsertWorkNode(db: DatabaseSync, node: WorkNode): void {
+  db.prepare(
+    `INSERT INTO work_nodes (id, org_id, kind, label, department, actor_id, online, last_seen_at)
+     VALUES (?,?,?,?,?,?,?,?)
+     ON CONFLICT(id) DO UPDATE SET
+       label=excluded.label,
+       department=excluded.department,
+       online=excluded.online,
+       last_seen_at=excluded.last_seen_at`,
+  ).run(node.id, node.orgId, node.kind, node.label, node.department, node.actorId, node.online ? 1 : 0, node.lastSeenAt);
+}
+
+export function listWorkNodes(db: DatabaseSync, orgId: string): WorkNode[] {
+  const rows = db.prepare("SELECT * FROM work_nodes WHERE org_id = ? ORDER BY department, label").all(orgId) as Record<
+    string,
+    unknown
+  >[];
+  return rows.map(rowToNode);
+}
+
+function rowToNode(r: Record<string, unknown>): WorkNode {
+  return {
+    id: String(r.id),
+    orgId: String(r.org_id),
+    kind: r.kind as WorkNode["kind"],
+    label: String(r.label),
+    department: String(r.department),
+    actorId: String(r.actor_id),
+    online: Number(r.online) === 1,
+    lastSeenAt: String(r.last_seen_at),
+  };
+}
+
+export function captureHarnessSlice(db: DatabaseSync, orgId: string): HarnessSlice {
+  return {
+    clusters: listWorkClusters(db, orgId).map((c) => ({
+      id: c.id,
+      title: c.title,
+      stage: c.stage,
+      department: c.department,
+      team: c.team,
+      ownerActorId: c.ownerActorId,
+      actorIds: c.actorIds,
+      nodeIds: c.nodeIds,
+      frozenCommitId: c.frozenCommitId,
+      updatedAt: c.updatedAt
