@@ -1,0 +1,24 @@
+{
+  "name": "orgmemory",
+  "private": true,
+  "packageManager": "pnpm@10.33.3",
+  "scripts": {
+    "dev": "pnpm --filter @orgmemory/api --filter @orgmemory/dashboard --parallel dev",
+    "dev:api": "pnpm --filter @orgmemory/api dev",
+    "dev:web": "pnpm --filter @orgmemory/dashboard dev",
+    "dev:license": "pnpm --filter @orgmemory/license-server dev",
+    "seed": "pnpm --filter @orgmemory/api seed",
+    "demo": "pnpm --filter @orgmemory/api exec tsx scripts/midnight-agent.ts",
+    "demo:story": "pnpm --filter @orgmemory/demo-story dev",
+    "test": "pnpm --filter @orgmemory/core --filter @orgmemory/policy --filter @orgmemory/license --filter @orgmemory/seal-protocol --filter @orgmemory/harness --filter @orgmemory/harness-runtime --filter @orgmemory/api test",
+    "worker": "pnpm --filter @orgmemory/worker start",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "build": "pnpm -r --if-present build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}
