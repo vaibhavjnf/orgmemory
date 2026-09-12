@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OrgMemory Demo — Official memory for agentic teams</title>
+    <meta
+      name="description"
+      content="Public OrgMemory demo story: Owner Concurrent Dashboard, midnight Suggest, OKFP fetch, Seal, Atlas, hosted Hermes loop, and mirror rollback."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #12100c;
+        --ink-2: #1b1812;
+        --paper: #f3ead7;
+        --brass: #c4a574;
+        --brass-2: #e2c99a;
+        --seal: #b54a3c;
+        --moss: #6f8f6a;
+        --line: #2a261c;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; background: var(--ink); color: var(--paper); }
+      body { font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; }
+      h1, h2, h3, .serif { font-family: "Newsreader", ui-serif, Georgia, serif; font-weight: 500; }
+      a { color: var(--brass); }
+      .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 64px; }
+      header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; align-items: flex-end; margin-bottom: 28px; }
+      .eyebrow { letter-spacing: 0.22em; text-transform: uppercase; color: var(--brass); font-size: 11px; }
+      .sub { color: color-mix(in srgb, var(--paper) 58%, transparent); font-size: 13px; line-height: 1.5; max-width: 42rem; }
+      .links { display: flex; flex-wrap: wrap; gap: 10px; }
+      .btn {
+        display: inline-block; border-radius: 8px; padding: 8px 12px; font-size: 13px;
+        text-decoration: none; border: 1px solid var(--line); color: var(--paper);
+      }
+      .btn.primary { background: var(--brass); color: var(--ink); border-color: var(--brass); font-weight: 500; }
+      .note {
+        border: 1px solid color-mix(in srgb, var(--brass) 35%, var(--line));
+        background: var(--ink-2); border-radius: 12px; padding: 14px 16px; font-size: 13px; line-height: 1.55;
+        margin-bottom: 22px;
+      }
+      .grid { display: grid; gap: 16px; }
+      @media (min-width: 960px) { .grid.main { grid-template-columns: 1.15fr 0.85fr; } }
+      .card { background: var(--ink-2); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+      .pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+      .pill { border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; font-size: 11px; color: color-mix(in srgb, var(--paper) 58%, transparent); }
+      .lanes { display: grid; gap: 12px; }
+      @media (min-width: 720px) { .lanes { grid-template-columns: 1fr 1fr; } }
+      .lane h4 { margin: 0; letter-spacing: 0.18em; text-transform: uppercase; color: var(--brass); font-size: 11px; font-family: inherit; }
+      .team { color: color-mix(in srgb, var(--paper) 45%, transparent); font-size: 12px; margin: 10px 0 6px; }
+      .cluster {
+        width: 100%; text-align: left; border-radius: 10px; border: 1px solid var(--line);
+        background: color-mix(in srgb, var(--ink) 70%, transparent); color: inherit; padding: 12px; cursor: pointer;
+      }
+      .cluster.active { border-color: color-mix(in srgb, var(--brass) 50%, transparent); background: var(--ink); }
+      .row { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+      .stage { font-size: 11px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; }
+      .stage.active { color: var(--moss); border-color: color-mix(in srgb, var(--moss) 40%, transparent); }
+      .stage.blocked { color: var(--seal); border-color: color-mix(in srgb, var(--seal) 40%, transparent); }
+      .stage.intake { color: var(--brass-2); }
+      .muted { color: color-mix(in srgb, var(--paper) 48%, transparent); font-size: 12px; line-height: 1.45; }
+      .steps { display: grid; gap: 8px; }
+      .step {
+        width: 100%; text-align: left; border: 1px solid var(--line); background: var(--ink);
+        color: inherit; border-radius: 10px; padding: 10px 12px; cursor: pointer;
+      }
+      .step[aria-current="true"] { border-color: color-mix(in srgb, var(--brass) 55%, transparent); }
+      .step b { display: block; font-size: 13px; font-weight: 500; }
+      .panel h3 { margin: 0 0 6px; font-size: 22px; }
+      pre {
+        overflow: auto; background: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+        padding: 10px; font-size: 11px; line-height: 1.45; color: color-mix(in srgb, var(--paper) 72%, transparent);
+      }
+      .ok { color: var(--moss); }
+      .warn { color: var(--brass-2); }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th, td { text-align: left; padding: 8px 6px; border-top: 1px solid var(--line); vertical-align: top; }
+      th { color: color-mix(in srgb, var(--paper) 42%, transparent); font-weight: 500; }
+      footer { margin-top: 36px; font-size: 12px; color: color-mix(in srgb, var(--paper) 50%, transparent); line-height: 1.55; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <div class="eyebrow">OrgMemory</div>
+          <h1 class="serif" style="margin: 6px 0 8px; font-size: 34px">Official memory for agentic teams</h1>
+          <p class="sub">
+            Public demo story of the Owner Concurrent Dashboard. This page is a shareable projection of the Acme Legal
+            seed — the live Fastify + SQLite harness still runs locally until Origin is linked to Vercel.
+          </p>
+        </div>
+        <div class="links">
+          <a class="btn primary" href="https://orgmemory-waitlist.vercel.app">Join the waitlist</a>
+          <a class="btn" href="#script">Demo script</a>
+        </div>
+      </header>
+
+      <div class="note">
+        <strong>What you can paste today:</strong> this URL. The waitlist is
+        <a href="https://orgmemory-waitlist.vercel.app">orgmemory-waitlist.vercel.app</a>.
+        A live multi-tenant API on a public host is blocked: this Origin workspace has
+        <code>originConnections: []</code> — no Origin↔Vercel git link — and the authority plane is Fastify + SQLite,
+        not a Vercel serverless app. Seal native watchers stay scaffolds. This is not a clone of OpenClaw / Ego / picoclaw.
+      </div>
+
+      <div class="grid main">
+        <section class="card">
+          <div class="eyebrow">Owner Concurrent Dashboard</div>
+          <h2 class="serif" style="margin: 6px 0 8px; font-size: 26px">Acme Legal · concurrent work</h2>
+          <p class="muted">
+            Hosted Hermes is the driver. Department × work × stage × node. Not a chatbot skin over Drive.
+          </p>
+          <div class="pills">
+            <span class="pill">4 clusters</span>
+            <span class="pill">20 events</span>
+            <span class="pill">5 nodes</span>
+            <span class="pill">Runtime 1</span>
+            <span class="pill">Fetch 2</span>
+            <span class="pill">Seal 1</span>
+            <span class="pill">Slack 2</span>
+          </div>
+          <div class="lanes" style="margin-top: 16px">
+            <div class="lane">
+              <h4>Real Estate</h4>
+              <div class="team">Associates</div>
+              <button class="cluster active" data-cluster="cl_rent" type="button">
+                <div class="row"><span>HQ rent amendment</span><span class="stage active">Active · frozen</span></div>
+                <div class="muted" style="margin-top: 6px">jordan-thinkpad · Night Agent</div>
+                <p class="muted" style="margin: 8px 0 0">Runtime · Hosted Hermes loop: suggest → fetch → prompt_trace → remember</p>
+              </button>
+              <div class="team">Partners</div>
+              <button class="cluster" data-cluster="cl_4419" type="button">
+                <div class="row"><span>Matter 4419 estoppel</span><span class="stage blocked">Blocked</span></div>
+                <p class="muted" style="margin: 8px 0 0">Salesforce · Estoppel missing from landlord</p>
+              </button>
+              <button class="cluster" data-cluster="cl_conti" type="button">
+                <div class="row"><span>Conti Corp retainer</span><span class="stage active">Active</span></div>
+                <p class="muted" style="margin: 8px 0 0">Browser · Open Conti opportunity (stub)</p>
+              </button>
+            </div>
+            <div class="lane">
+              <h4>Finance</h4>
+              <div class="team">People Ops</div>
+              <button class="cluster" data-cluster="cl_spend" type="button">
+                <div class="row"><span>Q3 office spend</span><span class="stage intake">Intake</span></div>
+                <p class="muted" style="margin: 8px 0 0">Ramp · CAM copay is not an Exhibit B rewrite</p>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="card" id="script">
+          <div class="eyebrow">Screenshotable path</div>
+          <h2 class="serif" style="margin: 6px 0 10px; font-size: 22px">Investor demo script</h2>
+          <div class="steps" id="steps"></div>
+        </aside>
+      </div>
+
+      <section class="card" id="panel" style="margin-top: 16px"></section>
+
+      <section class="card" style="margin-top: 16px">
+        <h2 class="serif" style="margin: 0 0 8px; font-size: 22px">Moats — live in the repo vs stubbed</h2>
+        <p class="muted">What a design partner can run locally with <code>pnpm dev</code>, versus what is still a stub.</p>
+        <div style="overflow-x: auto; margin-top: 8px">
+          <table>
+            <thead>
+              <tr><th>Surface</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Owner Concurrent Dashboard + WorkEvent bus</td><td class="ok">Live (seeded Acme Legal)</td></tr>
+              <tr><td>Suggest + Midnight ranking (not pure cosine)</td><td class="ok">Live — query “lease rent schedule”</td></tr>
+              <tr><td>OKFP fetch receipts + verify</td><td class="ok">Live (ed25519)</td></tr>
+              <tr><td>Seal ledger + Win/Mac/Linux ingest (T0–T3)</td><td class="ok">Live protocol; native watchers are scaffolds</td></tr>
+              <tr><td>Atlas skill graph + official reuse</td><td class="ok">Live seed graph</td></tr>
+              <tr><td>Hosted Hermes loop (suggest/fetch/tools/prompt-trace)</td><td class="ok">Live, deterministic (no LLM)</td></tr>
+              <tr><td>Timeline mirrors + signed rollback</td><td class="ok">Live</td></tr>
+              <tr><td>Hard commits / freeze</td><td class="ok">Live — HQ rent is frozen</td></tr>
+              <tr><td>Session vault metadata</td><td class="ok">Live — redacted only, no raw cookies</td></tr>
+              <tr><td>Composio tenant identity</td><td class="warn">Interface + mock</td></tr>
+              <tr><td>Browser operator / Slack / Salesforce / Ramp</td><td class="warn">Stubs on the same bus</td></tr>
+              <tr><td>Seal native watchers / OpenClaw / Ego / picoclaw</td><td>Not shipped — watchers remain scaffolds; no clone</td></tr>
+              <tr><td>Public hosted API (this Origin repo → Vercel)</td><td class="warn">Blocked — originConnections empty</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer>
+        OrgMemory is the public name. Weave was an internal codename.
+        Local live path: <code>pnpm install && pnpm dev</code> — dashboard
+        <code>127.0.0.1:43122</code>, API <code>127.0.0.1:43121</code>.
+        Agent midnight script: <code>pnpm demo</code>. Hosted loop: <code>pnpm worker</code>.
+      </footer>
+    </div>
+    <script>
+      const steps = [
+        {
+          id: "suggest",
+          title: "1. Suggest",
+          blurb: "Midnight ranking, not cosine.",
+          render() {
+            return `
+              <div class="eyebrow">OrgMemory Suggest</div>
+              <h3>lease rent schedule</h3>
+              <p class="muted">Context: HQ rent amendment at 00:30. Partner laptop is off. Drive stays canonical.</p>
+              <p style="margin: 14px 0 6px"><strong>Acme HQ Office Lease — Exhibit B Rent Schedule.pdf</strong> · 0.812</p>
+              <p class="muted">Reuse + recency beat the intern scratch note. Why-scores: similarity, reuse, authority, project affinity, ACL.</p>
+              <pre>POST /v1/suggest  { query: "lease rent schedule", projectId: "proj_re" }</pre>
+            `;
+          },
+        },
+        {
+          id: "fetch",
+          title: "2. OKFP fetch",
+          blurb: "Purpose-bound bytes + receipt.",
+          render() {
+            return `
+              <div class="eyebrow">Official Knowledge Fetch Protocol</div>
+              <h3>Fetch Exhibit B · receipt verified</h3>
+              <p class="muted">No purpose, no bytes. Denied fetches still hit the employee-visible ledger.</p>
+              <pre>{
+  "purpose": "Draft HQ rent amendment at 00:30 without pinging a human",
+  "matterId": "matter_hq",
+  "file": "Acme HQ Office Lease — Exhibit B Rent Schedule.pdf",
+  "alg": "ed25519",
+  "badge": "verified"
+}</pre>
+            `;
+          },
+        },
+        {
+          id: "seal",
+          title: "3. Seal badge",
+          blurb: "Ledger + endpoint integrity.",
+          render() {
+            return `
+              <div class="eyebrow">OrgMemory Seal</div>
+              <h3>Verified fetch on an enrolled org</h3>
+              <p class="muted">Win / Mac / Linux ingest is live. Native folder watchers remain scaffolds. Integrity degrades T3→T0; it does not silently widen allowlists.</p>
+              <div class="pills">
+                <span class="pill">PRIYA-SURFACE · windows · T1</span>
+                <span class="pill">Jordan's MacBook Pro · darwin · T1</span>
+                <span class="pill">jordan-thinkpad · linux · T2</span>
+              </div>
+            `;
+          },
+        },
+        {
+          id: "atlas",
+          title: "4. Atlas",
+          blurb: "Producer → official reuse.",
+          render() {
+            return `
+              <div class="eyebrow">OrgMemory Atlas</div>
+              <h3>Commercial leasing consolidates</h3>
+              <p class="muted">Not an HR grade. Official fetches grow the graph.</p>
+              <p><strong>Rent schedules</strong> <span class="ok">3 official reuses</span></p>
+              <p class="muted">People ops stays a separate domain — handbook is not leasing authority.</p>
+            `;
+          },
+        },
+        {
+          id: "hermes",
+          title: "5. Hosted Hermes loop",
+          blurb: "Infra we host; dashboard projects it.",
+          render() {
+            return `
+              <div class="eyebrow">Hosted Hermes runtime</div>
+              <h3>Run hosted loop on HQ rent</h3>
+              <p class="muted">Always-on tool loop on OrgMemory infra. Seal devices and the browser pool are satellites. Not a port of OpenClaw.</p>
+              <pre>suggest → fetch → prompt_trace → remember
+cluster: cl_rent
+runtime: rt_acme · hermes-hosted · orgmemory-infra</pre>
+            `;
+          },
+        },
+        {
+          id: "rollback",
+          title: "6. Mirror rollback",
+          blurb: "Signed emergency rewind.",
+          render() {
+            return `
+              <div class="eyebrow">Concurrent fabric</div>
+              <h3>Rollback “After HQ rent freeze”</h3>
+              <p class="muted">Restores cluster stages from a timeline mirror and issues an OKFP rollback receipt. It does not rewrite employee laptops, personal browsers, or canonical Drive files.</p>
+              <pre>POST /v1/mirrors/:id/rollback  →  receipt.purpose = "Emergency harness rollback"</pre>
+            `;
+          },
+        },
+      ];
+
+      const stepsEl = document.getElementById("steps");
+      const panel = document.getElementById("panel");
+
+      function show(id) {
+        const step = steps.find((s) => s.id === id) ?? steps[0];
+        for (const btn of stepsEl.querySelectorAll(".step")) {
+          btn.setAttribute("aria-current", btn.dataset.id === step.id ? "true" : "false");
+        }
+        panel.innerHTML = step.render();
+        history.replaceState(null, "", "#" + step.id);
+      }
+
+      stepsEl.innerHTML = steps
+        .map(
+          (s) =>
+            `<button class="step" data-id="${s.id}" type="button"><b>${s.title}</b><span class="muted">${s.blurb}</span></button>`,
+        )
+        .join("");
+      stepsEl.addEventListener("click", (e) => {
+        const btn = e.target.closest(".step");
+        if (btn) show(btn.dataset.id);
+      });
+      document.querySelectorAll("[data-cluster]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll("[data-cluster]").forEach((b) => b.classList.toggle("active", b === btn));
+          if (btn.dataset.cluster === "cl_rent") show("hermes");
+          if (btn.dataset.cluster === "cl_4419") show("atlas");
+        });
+      });
+      const initial = location.hash.replace("#", "") || "suggest";
+      show(initial);
+    </script>
+  </body>
+</html>
