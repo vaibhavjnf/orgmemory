@@ -20,7 +20,7 @@ pnpm dev
 | API | http://127.0.0.1:43121 |
 | Health | http://127.0.0.1:43121/v1/health |
 
-Needs Node 20+. SQLite at `data/orgmemory.sqlite` is created and seeded with **Acme Legal** on first boot. No extra env required.
+Needs Node 20+. SQLite at `data/orgmemory.sqlite` is created and seeded with **Acme Legal** on first boot. No extra env required. If `pnpm-lock.yaml` is absent, `pnpm install` writes one.
 
 ```bash
 pnpm test
