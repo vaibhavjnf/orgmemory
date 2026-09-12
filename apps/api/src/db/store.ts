@@ -244,4 +244,179 @@ function rowToAudit(r: Record<string, unknown>): AuditEvent {
     id: String(r.id),
     orgId: String(r.org_id),
     actorId: String(r.actor_id),
-    agentId: r.agent_id ? String(r.a
+    agentId: r.agent_id ? String(r.agent_id) : null,
+    action: r.action as AuditAction,
+    purpose: r.purpose ? String(r.purpose) : null,
+    matterId: r.matter_id ? String(r.matter_id) : null,
+    ticketId: r.ticket_id ? String(r.ticket_id) : null,
+    fileId: r.file_id ? String(r.file_id) : null,
+    suggestionId: r.suggestion_id ? String(r.suggestion_id) : null,
+    query: r.query ? String(r.query) : null,
+    aclSnapshot: r.acl_snapshot_json ? parseJson<Acl>(String(r.acl_snapshot_json), { ownerId: "", sharedWith: [] }) : null,
+    contentHash: r.content_hash ? String(r.content_hash) : null,
+    receiptId: r.receipt_id ? String(r.receipt_id) : null,
+    decision: r.decision as PolicyDecision,
+    metadata: parseJson<Record<string, string>>(String(r.metadata_json), {}),
+    createdAt: String(r.created_at),
+  };
+}
+
+export function saveSuggestionBatch(
+  db: DatabaseSync,
+  batchId: string,
+  orgId: string,
+  actorId: string,
+  query: string,
+  suggestions: Suggestion[],
+): void {
+  const now = new Date().toISOString();
+  db.prepare("INSERT INTO suggestion_batches (id, org_id, actor_id, query, created_at) VALUES (?,?,?,?,?)").run(
+    batchId,
+    orgId,
+    actorId,
+    query,
+    now,
+  );
+  const ins = db.prepare(
+    "INSERT INTO suggestions (id, batch_id, file_id, chunk_id, score, snippet, why_json) VALUES (?,?,?,?,?,?,?)",
+  );
+  for (const s of suggestions) {
+    ins.run(s.id, batchId, s.fileId, s.chunkId, s.score, s.snippet, JSON.stringify(s.why));
+  }
+}
+
+export function getSuggestion(db: DatabaseSync, id: string): { id: string; fileId: string; batchId: string } | undefined {
+  const row = db.prepare("SELECT id, file_id, batch_id FROM suggestions WHERE id = ?").get(id) as
+    | { id: string; file_id: string; batch_id: string }
+    | undefined;
+  if (!row) return undefined;
+  return { id: row.id, fileId: row.file_id, batchId: row.batch_id };
+}
+
+export function saveReceipt(db: DatabaseSync, receipt: OkfpReceipt): void {
+  db.prepare(
+    "INSERT INTO receipts (id, org_id, body_json, signature, public_key_id, created_at) VALUES (?,?,?,?,?,?)",
+  ).run(receipt.id, receipt.orgId, JSON.stringify(receipt), receipt.signature, receipt.publicKeyId, receipt.issuedAt);
+}
+
+export function getReceipt(db: DatabaseSync, id: string): OkfpReceipt | undefined {
+  const row = db.prepare("SELECT body_json FROM receipts WHERE id = ?").get(id) as { body_json: string } | undefined;
+  if (!row) return undefined;
+  return parseJson<OkfpReceipt>(row.body_json, undefined as unknown as OkfpReceipt);
+}
+
+export function getOrgKeys(db: DatabaseSync, orgId: string): { keyId: string; publicPem: string; privatePem: string } | undefined {
+  const row = db.prepare("SELECT key_id, public_pem, private_pem FROM org_keys WHERE org_id = ?").get(orgId) as
+    | { key_id: string; public_pem: string; private_pem: string }
+    | undefined;
+  if (!row) return undefined;
+  return { keyId: row.key_id, publicPem: row.public_pem, privatePem: row.private_pem };
+}
+
+export function topReused(db: DatabaseSync, orgId: string, limit = 8): Array<{ file: SourceFile; fetches: number }> {
+  const rows = db
+    .prepare(
+      `SELECT file_id, COUNT(*) AS n FROM audit_events
+       WHERE org_id = ? AND action = 'fetch' AND decision = 'allow' AND file_id IS NOT NULL
+       GROUP BY file_id ORDER BY n DESC LIMIT ?`,
+    )
+    .all(orgId, limit) as { file_id: string; n: number }[];
+  const out: Array<{ file: SourceFile; fetches: number }> = [];
+  for (const r of rows) {
+    const f = getFile(db, r.file_id);
+    if (f) out.push({ file: f, fetches: Number(r.n) });
+  }
+  return out;
+}
+
+export function listSkillGraph(db: DatabaseSync, orgId: string): { nodes: SkillNode[]; edges: SkillEdge[] } {
+  const nodes = db.prepare("SELECT * FROM skill_nodes WHERE org_id = ?").all(orgId) as Record<string, unknown>[];
+  const edges = db.prepare("SELECT * FROM skill_edges WHERE org_id = ?").all(orgId) as Record<string, unknown>[];
+  return {
+    nodes: nodes.map((n) => ({
+      id: String(n.id),
+      orgId: String(n.org_id),
+      name: String(n.name),
+      parentId: n.parent_id ? String(n.parent_id) : null,
+      kind: n.kind as SkillNode["kind"],
+      description: String(n.description),
+    })),
+    edges: edges.map((e) => ({
+      id: String(e.id),
+      orgId: String(e.org_id),
+      fromNodeId: String(e.from_node_id),
+      toNodeId: String(e.to_node_id),
+      fileId: String(e.file_id),
+      producerId: String(e.producer_id),
+      reuseCount: Number(e.reuse_count),
+    })),
+  };
+}
+
+export function bumpSkillReuse(db: DatabaseSync, fileId: string): void {
+  db.prepare("UPDATE skill_edges SET reuse_count = reuse_count + 1 WHERE file_id = ?").run(fileId);
+}
+
+export function upsertSealDevice(db: DatabaseSync, device: SealDevice): void {
+  db.prepare(
+    `INSERT INTO seal_devices (
+      id, org_id, hostname, os, os_user, owner_user_id, integrity_tier, claimed_tier,
+      degrade_reason, allowlist_json, capabilities_json, last_heartbeat_at, enrolled_at
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(id) DO UPDATE SET
+      hostname=excluded.hostname,
+      integrity_tier=excluded.integrity_tier,
+      claimed_tier=excluded.claimed_tier,
+      degrade_reason=excluded.degrade_reason,
+      allowlist_json=excluded.allowlist_json,
+      capabilities_json=excluded.capabilities_json,
+      last_heartbeat_at=excluded.last_heartbeat_at`,
+  ).run(
+    device.id,
+    device.orgId,
+    device.hostname,
+    device.os,
+    device.osUser,
+    device.ownerUserId,
+    device.integrityTier,
+    device.claimedTier,
+    device.degradeReason,
+    JSON.stringify(device.allowlist),
+    JSON.stringify(device.capabilities),
+    device.lastHeartbeatAt,
+    device.enrolledAt,
+  );
+}
+
+export function getSealDevice(db: DatabaseSync, id: string): SealDevice | undefined {
+  const r = db.prepare("SELECT * FROM seal_devices WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  return r ? rowToDevice(r) : undefined;
+}
+
+export function listSealDevices(db: DatabaseSync, orgId: string): SealDevice[] {
+  const rows = db.prepare("SELECT * FROM seal_devices WHERE org_id = ? ORDER BY hostname").all(orgId) as Record<
+    string,
+    unknown
+  >[];
+  return rows.map(rowToDevice);
+}
+
+function rowToDevice(r: Record<string, unknown>): SealDevice {
+  return {
+    id: String(r.id),
+    orgId: String(r.org_id),
+    hostname: String(r.hostname),
+    os: r.os as SealDevice["os"],
+    osUser: String(r.os_user),
+    ownerUserId: String(r.owner_user_id),
+    integrityTier: r.integrity_tier as SealDevice["integrityTier"],
+    claimedTier: r.claimed_tier as SealDevice["claimedTier"],
+    degradeReason: r.degrade_reason ? String(r.degrade_reason) : null,
+    allowlist: JSON.parse(String(r.allowlist_json)) as string[],
+    capabilities: JSON.parse(String(r.capabilities_json)) as SealDevice["capabilities"],
+    lastHeartbeatAt: r.last_heartbeat_at ? String(r.last_heartbeat_at) : null,
+    enrolledAt: String(r.enrolled_at),
+  };
+}
+
+export function insertSealEvents(db: DatabaseSync, orgId: string, events: 
