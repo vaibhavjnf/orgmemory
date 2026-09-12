@@ -1,0 +1,16 @@
+node_modules
+dist
+build
+.turbo
+.vite
+*.log
+.env
+.env.local
+.DS_Store
+coverage
+data/*.sqlite
+data/*.sqlite-*
+apps/api/data
+**/*.tsbuildinfo
+.idea
+.vscode
