@@ -3,3 +3,53 @@ lockfileVersion: '9.0'
 settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
+
+importers:
+
+  .: {}
+
+  apps/api:
+    dependencies:
+      '@fastify/cors':
+        specifier: ^11.1.0
+        version: 11.3.0
+      '@orgmemory/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@orgmemory/harness':
+        specifier: workspace:*
+        version: link:../../packages/harness
+      '@orgmemory/harness-runtime':
+        specifier: workspace:*
+        version: link:../../packages/harness-runtime
+      '@orgmemory/license':
+        specifier: workspace:*
+        version: link:../../packages/license
+      '@orgmemory/policy':
+        specifier: workspace:*
+        version: link:../../packages/policy
+      '@orgmemory/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      '@orgmemory/seal-protocol':
+        specifier: workspace:*
+        version: link:../../packages/seal-protocol
+      fastify:
+        specifier: ^5.6.1
+        version: 5.12.4
+      zod:
+        specifier: ^4.1.11
+        version: 4.6.2
+    devDependencies:
+      '@types/node':
+        specifier: ^24.5.2
+        version: 24.13.4
+      tsx:
+        specifier: ^4.20.5
+        version: 4.23.13
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@24.13.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)
